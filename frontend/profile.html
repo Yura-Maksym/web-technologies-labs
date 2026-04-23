@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Профіль - Confectionery</title>
+</head>
+<body>
+    <nav>
+        <a href="/catalog.html">Каталог</a> |
+        <a href="/profile.html">Профіль</a> |
+        <button onclick="logout()">Вийти</button>
+    </nav>
+
+    <h1>Ваш профіль</h1>
+    <p>Ви успішно авторизовані!</p>
+    <p>Ваш секретний токен (спільний стан): <strong id="token-display"></strong></p>
+
+    <script>
+        const token = localStorage.getItem('token');
+        if (!token) {
+            window.location.href = '/';
+        } else {
+            document.getElementById('token-display').innerText = token;
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = '/';
+        }
+    </script>
+</body>
+</html>

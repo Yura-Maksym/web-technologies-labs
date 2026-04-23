@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Вхід - Confectionery</title>
+</head>
+<body>
+    <h1>Авторизація</h1>
+    <p>Введіть admin / 1234</p>
+    <input type="text" id="username" placeholder="Логін">
+    <input type="password" id="password" placeholder="Пароль">
+    <button onclick="login()">Увійти</button>
+    <p id="error" style="color:red;"></p>
+
+    <script>
+        async function login() {
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+
+            try {
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: user, password: pass })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    localStorage.setItem('token', data.token); // Збереження токена (спільний стан)
+                    window.location.href = '/catalog.html'; // Навігація
+                } else {
+                    document.getElementById('error').innerText = "Помилка авторизації!"; // Обробка помилок
+                }
+            } catch (err) {
+                document.getElementById('error').innerText = "Помилка з'єднання з сервером";
+            }
+        }
+    </script>
+</body>
+</html>
