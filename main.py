@@ -1,0 +1,88 @@
+from fastapi import FastAPI, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+from typing import List, Optional
+import models, schemas
+from database import engine, get_db
+
+# Створюємо таблиці в базі даних при запуску
+models.Base.metadata.create_all(bind=engine)
+
+app = FastAPI(title="Confectionery API")
+
+
+# --- ДОПОМІЖНІ ЕНДПОІНТИ (Створення категорій та інгредієнтів) ---
+@app.post("/categories/", response_model=schemas.CategoryResponse, status_code=status.HTTP_201_CREATED)
+def create_category(category: schemas.CategoryCreate, db: Session = Depends(get_db)):
+    db_category = models.Category(name=category.name)
+    db.add(db_category)
+    db.commit()
+    db.refresh(db_category)
+    return db_category
+
+
+@app.post("/ingredients/", response_model=schemas.IngredientResponse, status_code=status.HTTP_201_CREATED)
+def create_ingredient(ingredient: schemas.IngredientCreate, db: Session = Depends(get_db)):
+    db_ingredient = models.Ingredient(**ingredient.model_dump())
+    db.add(db_ingredient)
+    db.commit()
+    db.refresh(db_ingredient)
+    return db_ingredient
+
+
+# --- ОСНОВНИЙ CRUD ДЛЯ ПРОДУКТІВ (ЦУКЕРОК) ---
+
+# 1. CREATE (POST)
+@app.post("/products/", response_model=schemas.ProductResponse, status_code=status.HTTP_201_CREATED)
+def create_product(product: schemas.ProductCreate, db: Session = Depends(get_db)):
+    db_product = models.Product(**product.model_dump())
+    db.add(db_product)
+    db.commit()
+    db.refresh(db_product)
+    return db_product
+
+
+# 2. READ (GET) з пагінацією, сортуванням та фільтрацією
+@app.get("/products/", response_model=List[schemas.ProductResponse])
+def get_products(
+        skip: int = 0,  # Пагінація: скільки пропустити
+        limit: int = 10,  # Пагінація: скільки взяти
+        category_id: Optional[int] = None,  # Фільтрація
+        sort_by_price: Optional[bool] = False,  # Сортування
+        db: Session = Depends(get_db)
+):
+    query = db.query(models.Product)
+
+    if category_id:
+        query = query.filter(models.Product.category_id == category_id)
+
+    if sort_by_price:
+        query = query.order_by(models.Product.price.desc())
+
+    products = query.offset(skip).limit(limit).all()
+    return products
+
+
+# 3. UPDATE (PUT)
+@app.put("/products/{product_id}", response_model=schemas.ProductResponse)
+def update_product(product_id: int, product: schemas.ProductUpdate, db: Session = Depends(get_db)):
+    db_product = db.query(models.Product).filter(models.Product.id == product_id).first()
+    if not db_product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    db_product.name = product.name
+    db_product.price = product.price
+    db.commit()
+    db.refresh(db_product)
+    return db_product
+
+
+# 4. DELETE (DELETE)
+@app.delete("/products/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_product(product_id: int, db: Session = Depends(get_db)):
+    db_product = db.query(models.Product).filter(models.Product.id == product_id).first()
+    if not db_product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    db.delete(db_product)
+    db.commit()
+    return None
