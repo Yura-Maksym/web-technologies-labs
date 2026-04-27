@@ -19,6 +19,28 @@
 
     <div class="container mt-5">
         <h2 class="mb-4" style="color: #8b4513;">Список цукерок</h2>
+
+        <div class="card shadow-sm border-0 mb-4 p-3" style="background-color: #fff8dc;">
+            <h5 style="color: #d2691e; margin-bottom: 15px;">➕ Додати нову цукерку</h5>
+            <form id="add-product-form" onsubmit="addProduct(event)" class="row g-3 align-items-end">
+                <div class="col-md-5">
+                    <label class="form-label small text-muted">Назва цукерки</label>
+                    <input type="text" id="new-name" class="form-control" placeholder="Напр., Ромашка" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted">Ціна (грн)</label>
+                    <input type="number" step="0.01" id="new-price" class="form-control" placeholder="0.00" required>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small text-muted">ID Категорії</label>
+                    <input type="number" id="new-cat-id" class="form-control" value="1" required>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn text-white w-100 shadow-sm" style="background-color: #d2691e;">Додати</button>
+                </div>
+            </form>
+        </div>
+
         <div class="card shadow-sm">
             <ul id="products-list" class="list-group list-group-flush"></ul>
         </div>
@@ -29,25 +51,53 @@
             window.location.href = '/';
         }
 
+        // Завантаження списку
         async function loadProducts() {
             try {
                 const response = await fetch('/products/');
                 const products = await response.json();
                 const list = document.getElementById('products-list');
+                list.innerHTML = ""; // Очищаємо перед оновленням
 
                 if (products.length === 0) {
-                    list.innerHTML = "<li class='list-group-item text-muted'>Каталог порожній. Додайте товари через /docs</li>";
+                    list.innerHTML = "<li class='list-group-item text-muted text-center p-4'>Каталог порожній. Додайте перший товар вище!</li>";
                     return;
                 }
 
                 products.forEach(p => {
                     const li = document.createElement('li');
-                    li.className = 'list-group-item d-flex justify-content-between align-items-center';
-                    li.innerHTML = `<strong>${p.name}</strong> <span class="badge rounded-pill" style="background-color: #d2691e;">${p.price} грн</span>`;
+                    li.className = 'list-group-item d-flex justify-content-between align-items-center p-3';
+                    li.innerHTML = `<span class="fs-5">${p.name} <small class="text-muted fs-6">(Категорія: ${p.category_id})</small></span>
+                                    <span class="badge rounded-pill fs-6" style="background-color: #d2691e;">${p.price} грн</span>`;
                     list.appendChild(li);
                 });
             } catch (err) {
                 console.error("Помилка завантаження", err);
+            }
+        }
+
+        // Додавання нового товару
+        async function addProduct(e) {
+            e.preventDefault(); // Зупиняємо перезавантаження сторінки
+            const name = document.getElementById('new-name').value;
+            const price = parseFloat(document.getElementById('new-price').value);
+            const category_id = parseInt(document.getElementById('new-cat-id').value);
+
+            try {
+                const response = await fetch('/products/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, price, category_id })
+                });
+
+                if (response.ok) {
+                    document.getElementById('add-product-form').reset(); // Очищаємо форму
+                    loadProducts(); // Одразу оновлюємо список на екрані
+                } else {
+                    alert("Помилка! Можливо, категорії з таким ID ще не існує. Створіть її через /docs.");
+                }
+            } catch (err) {
+                console.error("Помилка додавання", err);
             }
         }
 
