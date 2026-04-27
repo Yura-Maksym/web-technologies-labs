@@ -36,7 +36,7 @@
                     <select id="new-cat-id" class="form-select" required>
                         </select>
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-1">
                     <button type="submit" class="btn text-white w-100 shadow-sm" style="background-color: #d2691e;">Додати</button>
                 </div>
             </form>
@@ -48,17 +48,41 @@
     </div>
 
     <script>
+        // Перевірка авторизації
         if (!localStorage.getItem('token')) {
             window.location.href = '/';
         }
 
-        // Завантаження списку
+        let categoryMap = {}; // Словник для збереження назв категорій
+
+        // 1. Спочатку завантажуємо категорії
+        async function loadCategories() {
+            try {
+                const response = await fetch('/categories/');
+                const categories = await response.json();
+                const select = document.getElementById('new-cat-id');
+
+                categories.forEach(c => {
+                    categoryMap[c.id] = c.name; // Запам'ятовуємо: 1 = "Шоколадні цукерки"
+
+                    const option = document.createElement('option');
+                    option.value = c.id;
+                    option.innerText = c.name;
+                    select.appendChild(option);
+                });
+
+                // 2. Коли категорії завантажились, завантажуємо товари
+                loadProducts();
+            } catch (err) { console.error("Помилка категорій", err); }
+        }
+
+        // 3. Завантаження списку цукерок
         async function loadProducts() {
             try {
                 const response = await fetch('/products/');
                 const products = await response.json();
                 const list = document.getElementById('products-list');
-                list.innerHTML = ""; // Очищаємо перед оновленням
+                list.innerHTML = "";
 
                 if (products.length === 0) {
                     list.innerHTML = "<li class='list-group-item text-muted text-center p-4'>Каталог порожній. Додайте перший товар вище!</li>";
@@ -68,18 +92,20 @@
                 products.forEach(p => {
                     const li = document.createElement('li');
                     li.className = 'list-group-item d-flex justify-content-between align-items-center p-3';
-                    li.innerHTML = `<span class="fs-5">${p.name} <small class="text-muted fs-6">(Категорія: ${p.category_id})</small></span>
+
+                    // Заміняємо цифру на нормальну назву з нашого словника
+                    const categoryName = categoryMap[p.category_id] || `Категорія ID: ${p.category_id}`;
+
+                    li.innerHTML = `<span class="fs-5">${p.name} <small class="text-muted fs-6">(${categoryName})</small></span>
                                     <span class="badge rounded-pill fs-6" style="background-color: #d2691e;">${p.price} грн</span>`;
                     list.appendChild(li);
                 });
-            } catch (err) {
-                console.error("Помилка завантаження", err);
-            }
+            } catch (err) { console.error("Помилка завантаження", err); }
         }
 
-        // Додавання нового товару
+        // 4. Додавання нового товару
         async function addProduct(e) {
-            e.preventDefault(); // Зупиняємо перезавантаження сторінки
+            e.preventDefault();
             const name = document.getElementById('new-name').value;
             const price = parseFloat(document.getElementById('new-price').value);
             const category_id = parseInt(document.getElementById('new-cat-id').value);
@@ -92,37 +118,23 @@
                 });
 
                 if (response.ok) {
-                    document.getElementById('add-product-form').reset(); // Очищаємо форму
-                    loadProducts(); // Одразу оновлюємо список на екрані
+                    document.getElementById('new-name').value = ''; // Очищаємо тільки назву і ціну
+                    document.getElementById('new-price').value = '';
+                    loadProducts(); // Оновлюємо список
                 } else {
-                    alert("Помилка! Можливо, категорії з таким ID ще не існує. Створіть її через /docs.");
+                    alert("Помилка при додаванні товару.");
                 }
-            } catch (err) {
-                console.error("Помилка додавання", err);
-            }
+            } catch (err) { console.error("Помилка додавання", err); }
         }
 
+        // Вихід з профілю
         function logout() {
             localStorage.removeItem('token');
             window.location.href = '/';
         }
-        async function loadCategories() {
-            try {
-                const response = await fetch('/categories/');
-                const categories = await response.json();
-                const select = document.getElementById('new-cat-id');
-                categories.forEach(c => {
-                    const option = document.createElement('option');
-                    option.value = c.id;
-                    option.innerText = c.name;
-                    select.appendChild(option);
-                });
-            } catch (err) { console.error("Помилка категорій", err); }
-        }
 
-        loadCategories(); // Запускаємо при старті сторінки
-
-        loadProducts();
+        // Запускаємо ланцюжок при відкритті сторінки
+        loadCategories();
     </script>
 </body>
 </html>
