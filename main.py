@@ -28,6 +28,10 @@ def create_category(category: schemas.CategoryCreate, db: Session = Depends(get_
     db.refresh(db_category)
     return db_category
 
+@app.get("/categories/", response_model=List[schemas.CategoryResponse])
+def get_categories(db: Session = Depends(get_db)):
+    return db.query(models.Category).all()
+
 @app.post("/ingredients/", response_model=schemas.IngredientResponse, status_code=status.HTTP_201_CREATED)
 def create_ingredient(ingredient: schemas.IngredientCreate, db: Session = Depends(get_db)):
     db_ingredient = models.Ingredient(**ingredient.model_dump())
